@@ -3,12 +3,34 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\ApiFilter;
+use Symfony\Component\Serializer\Annotation\Groups;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
+use ApiPlatform\Doctrine\Orm\Filter\RangeFilter;
 use App\Repository\CommentRepository;
+use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use PhpParser\Node\Scalar\MagicConst\Dir;
 
 #[ORM\Entity(repositoryClass: CommentRepository::class)]
-#[ApiResource]
+#[ApiResource(
+    normalizationContext: ['groups'=> ['read']],
+    denormalizationContext: ['groups'=> ['write']],
+    shortName: "commentaires",
+    operations: [
+        new Get,
+        new Post,
+        new GetCollection,
+    ]
+)]
+#[ApiFilter(SearchFilter::class, properties: ['author' => 'partial'])]
+#[ApiFilter(DateFilter::class, properties: ['createdAt'])]
+#[ApiFilter(RangeFilter::class, properties: ['note'])]
 class Comment
 {
     #[ORM\Id]
@@ -17,23 +39,39 @@ class Comment
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['read', 'write'])]
     private ?string $author = null;
 
     #[ORM\Column(type: Types::TEXT)]
+    #[Groups(['read', 'write'])]
     private ?string $text = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['read', 'write'])]
     private ?string $email = null;
 
     #[ORM\Column]
     private ?\DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    #[Groups(['read', 'write'])]
     private ?int $note = null;
 
     #[ORM\ManyToOne(inversedBy: 'comments')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['read', 'write'])]
     private ?Conference $conference = null;
+
+    #[Groups(['read'])]
+    private ?string $shortText;
+
+    #[Groups(['read'])]
+    private ?int $age;
+
+    public function __construct()
+    {
+        $this->setCreatedAt($this->createdAt);
+    }
 
     public function getId(): ?int
     {
@@ -81,9 +119,13 @@ class Comment
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $createdAt): self
-    {
-        $this->createdAt = $createdAt;
+    public function setCreatedAt(\DateTimeImmutable $createdAt=null): self
+    {   
+        if($this->createdAt === null){
+            $this->createdAt = new \DateTimeImmutable();
+        }else{
+            $this->createdAt = $createdAt;
+        }
 
         return $this;
     }
@@ -111,4 +153,11 @@ class Comment
 
         return $this;
     }
+
+    public function getShortText():?string
+    {
+        $this->shortText = substr($this->text,0,2);
+        return $this->shortText;
+    }
+
 }
