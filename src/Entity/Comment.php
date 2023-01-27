@@ -12,10 +12,8 @@ use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Doctrine\Orm\Filter\RangeFilter;
 use App\Repository\CommentRepository;
-use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use PhpParser\Node\Scalar\MagicConst\Dir;
 
 #[ORM\Entity(repositoryClass: CommentRepository::class)]
 #[ApiResource(
@@ -64,9 +62,6 @@ class Comment
 
     #[Groups(['read'])]
     private ?string $shortText;
-
-    #[Groups(['read'])]
-    private ?int $age;
 
     public function __construct()
     {
