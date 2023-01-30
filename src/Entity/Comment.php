@@ -11,6 +11,9 @@ use Symfony\Component\Serializer\Annotation\Groups;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Doctrine\Orm\Filter\RangeFilter;
+use ApiPlatform\Metadata\Delete;
+use ApiPlatform\Metadata\Patch;
+use ApiPlatform\Metadata\Put;
 use App\Repository\CommentRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -22,8 +25,11 @@ use Doctrine\ORM\Mapping as ORM;
     shortName: "commentaires",
     operations: [
         new Get,
-        new Post,
+        new Post(security: "is_granted('ROLE_USER')"),
         new GetCollection,
+        new Put(security: "is_granted('ROLE_ADMIN')"),
+        new Patch(security: "is_granted('ROLE_USER')"),
+        new Delete(security: "is_granted('ROLE_ADMIN')")
     ]
 )]
 #[ApiFilter(SearchFilter::class, properties: ['author' => 'partial'])]
