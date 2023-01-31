@@ -1,0 +1,278 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Login{% endblock %}
+
+
+
+{% block body %}
+<style>
+    .example-wrapper { margin: 1em auto; max-width: 800px; width: 95%; font: 18px/1.5 sans-serif; }
+    .example-wrapper code { background: #F5F5F5; padding: 2px 6px; }
+</style>
+
+<div class="example-wrapper">
+    <div id="connexion">
+        <h1>Connexion</h1>
+        <form method="POST">
+            <label for="username">Identifiant</label>
+            <input type="text" id="username" name="username">
+            <label for="password">Mot de passe</label>
+            <input type="text" id="password" name="password">
+            <input type="submit" id="submitConnexion">
+        </form>
+    </div>
+    <div id='conference'>
+        <h1>Conférences</h1>
+
+        <div id="content">
+        </div>
+
+        <h2>Créer une conférence</h2>
+        <form method="POST" id="createForm">
+            <label for="city">Ville</label>
+            <input type="text" id="city" name="city">
+            <label for="year">Année</label>
+            <input type="text" id="year" name="year">
+            <div>
+                <label for="isInternational">Est Internationnal?</label>
+                <select name="isInternational"  id="isInternational">
+                    <option value="1">International</option>
+                    <option value="">National</option>
+                </select>
+            </div>
+            <input type="text" id="idConf" hidden>
+            <input type="submit" id="submitCreate" value="Créer">
+            <input type="submit" id="submitUpdate" value="Modifier" hidden>
+        </form>
+    </div>
+</div>
+
+
+<script>
+    let token = "";
+    if(localStorage.getItem('tokens')){
+        document.getElementById("connexion").style.display="none";
+        document.getElementById("conference").style.display="block";
+        getConf();
+    }
+    else{
+        document.getElementById("connexion").style.display="block";
+        document.getElementById("conference").style.display="none";
+    }
+
+    //Fonction de login
+    function login(){
+        let requestInfo = {
+            method: 'POST',
+            body: JSON.stringify({
+                username: document.getElementById("username").value,
+                password: document.getElementById("password").value
+            }),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        };
+        fetch('/api/login_check', requestInfo)
+            .then(function(response) {
+                if (response.ok) {
+                    response.json().then(function(json) {
+                        token = json.token;
+                        document.getElementById("connexion").style.display="none";
+                        document.getElementById("conference").style.display="block";
+                        localStorage.setItem('tokens',token);
+                    })
+                } else {
+                    if (response.status == 401) {
+                        alert('Mauvais login ou mot de passe');
+                    } else {
+                        alert('Mauvaise réponse du réseau');
+                    }
+                }
+            })
+            .catch(function(error) {
+                alert('error=' + error);
+            });
+
+    }
+
+    //Récupération des conférences
+    function getConf(){
+        let requestInfo = {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            }
+        };
+        fetch('/api/conferences', requestInfo)
+            .then(function(response){
+                if(response.ok){
+                    response.json().then(function(json){
+                        content.textContent= '';
+                        for(let i = 0; i < json['hydra:member'].length; i++){
+                        const subdiv = document.createElement("div");
+                        subdiv.classList.add(json['hydra:member'][i].id);
+                        content.appendChild(subdiv);
+                        subdiv.textContent += json['hydra:member'][i].city;
+                        subdiv.textContent += ' ';
+                        subdiv.textContent += json['hydra:member'][i].year;
+                        subdiv.textContent += ' ';
+                        subdiv.textContent += (json['hydra:member'][i].isInternational ? "International" : "National");
+                        subdiv.innerHTML += `<br><button class="delete" id="${json['hydra:member'][i].id}">Supprimer</button>`
+                        subdiv.innerHTML += `<button class="update" id="${json['hydra:member'][i].id}">Modifier</button>`
+                    }
+                        //Ecouteur à la suppression d'une conférence
+                        const buttonsDelete = document.querySelectorAll(".delete");
+                        buttonsDelete.forEach(button => {
+                            button.addEventListener('click', () =>{
+                                deleteConf(button.attributes.id.value);
+                            })
+                        });
+
+                        //Mise en place du form pour l'update
+                        const buttonsUpdate = document.querySelectorAll(".update");
+                        buttonsUpdate.forEach(button => {
+                            button.addEventListener('click',() =>{
+                                document.querySelector('h2').textContent = "Modifier la conférence";
+                                document.getElementById("submitUpdate").style.display = "block";
+                                document.getElementById("submitCreate").style.display = "none";
+                                json['hydra:member'].forEach(line => {
+                                    if(line.id == button.attributes.id.value){
+                                        document.getElementById("city").value = line.city;
+                                        document.getElementById("year").value = line.year;
+                                        document.getElementById("idConf").value = line.id;
+                                        if(line.isInternational === true){
+                                            document.getElementById("isInternational").value = '1';
+                                        }
+                                        else{
+                                            document.getElementById("isInternational").value = '';
+                                        }
+                                    }
+                                })
+                            })
+                        })
+
+                        //Ecouteur à la modification d'une conférence
+                        const submitUpdate = document.getElementById('submitUpdate');
+                        submitUpdate.addEventListener('click', (e) =>{
+                            e.preventDefault();
+                            let idConf = document.getElementById("idConf").value;
+                            updateConf(idConf);
+                            getConf();
+                            document.getElementById("city").value = '';
+                            document.getElementById("year").value = '';
+                            document.getElementById("submitUpdate").style.display = "none";
+                            document.getElementById("submitCreate").style.display = "block";
+                            document.querySelector('h2').textContent = "Créer une conférence";
+                        })    
+                    })
+                }
+                else {
+                    alert('Mauvaise réponse du réseau')
+                }
+            })
+            .catch(function(error) {
+                alert('error=' + error);
+            });
+    }
+
+    //Ecouteur à la soumission du formulaire de connexion
+    const submitConnexion = document.getElementById("submitConnexion");
+    submitConnexion.addEventListener('click', (e)=>{
+        e.preventDefault();
+        login();
+        getConf();
+    })
+
+    //Création d'une conférence
+    function createConf(){
+        let requestInfo = {
+            method: 'POST',
+            body: JSON.stringify({
+                city: document.getElementById("city").value,
+                year: document.getElementById("year").value,
+                isInternational: Boolean(document.getElementById("isInternational").value)
+            }),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            }
+        };
+        fetch('/api/admin/conference', requestInfo)
+            .then(function(response){
+                if(response.ok){
+                    response.json().then(function(json){
+                    })
+                }
+                else{
+                    alert('Mauvaise réponse du réseau')
+                }
+            })
+            .catch(function(error) {
+                alert('error=' + error);
+            });
+    }
+
+    //Ecouteur à l'ajout d'une conférence
+    const submitCreate = document.getElementById('submitCreate');
+    submitCreate.addEventListener('click', (e)=>{
+        e.preventDefault();
+        if(document.getElementById("city").value !== '' && document.getElementById("year").value !== ''){
+            createConf();
+            getConf();
+            document.getElementById("city").value = '';
+            document.getElementById("year").value = '';
+        }
+    })
+
+    //Suppression d'une conférence
+    function deleteConf(idConf){
+        let requestInfo = {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            }
+        };
+        fetch('api/conferences/'+idConf, requestInfo)
+            .then(function(response){
+                if(response.ok){
+                    getConf();
+                }
+                else{
+                    alert('Mauvaise réponse du réseau')
+                }
+            })
+            .catch(function(error) {
+                alert('error=' + error);
+            });
+    }
+
+    //Update d'une conférence
+    function updateConf(idConf){
+        let requestInfo = {
+            method: 'PATCH',
+            body: JSON.stringify({
+                city: document.getElementById("city").value,
+                year: document.getElementById("year").value,
+                isInternational: Boolean(document.getElementById("isInternational").value)
+            }),
+            headers: {
+                'Content-type': 'application/merge-patch+json' 
+            }
+        };
+        fetch('api/conferences/'+idConf, requestInfo)
+            .then(function(response){
+                if(response.ok){
+                    response.json().then(function(json){
+
+                    })
+                }
+            })
+            .catch(function(error){
+                alert('error =' + error);
+            })
+    }
+
+</script>
+{% endblock %}

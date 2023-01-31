@@ -23,6 +23,7 @@ class UserHashPassword implements ProcessorInterface
         );
         $data->setPassword($hashedPassword);
         $data->eraseCredentials();
+        $data->setRoles(['ROLE_USER']);
 
         return $this->processor->process($data, $operation, $uriVariables, $context);
     }

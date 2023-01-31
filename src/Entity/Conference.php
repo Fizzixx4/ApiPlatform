@@ -21,10 +21,10 @@ use Doctrine\ORM\Mapping as ORM;
     operations: [
         new Get,
         new GetCollection,
-        new Post(uriTemplate:'/admin/conference', security:"is_granted('ROLE_ADMIN')"),
-        new Delete(security: "is_granted('ROLE_ADMIN')"),
+        new Post(uriTemplate:'/admin/conference'),
+        new Delete(),
         new Put(security: "is_granted('ROLE_ADMIN')"),
-        new Patch(security: "is_granted('ROLE_ADMIN')"),
+        new Patch(),
     ]
 )]
 #[ApiFilter(SearchFilter::class, properties: ['year' => 'start'])]

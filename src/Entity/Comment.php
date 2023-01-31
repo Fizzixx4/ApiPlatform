@@ -22,7 +22,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ApiResource(
     normalizationContext: ['groups'=> ['read']],
     denormalizationContext: ['groups'=> ['write']],
-    shortName: "commentaires",
+    shortName: "Commentaire",
     operations: [
         new Get,
         new Post(security: "is_granted('ROLE_USER')"),
